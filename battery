@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 usage() {
 cat <<EOF
@@ -18,6 +18,7 @@ battery usage:
 EOF
 }
 
+
 # For default behavior
 set_defaults() {
     pmset_on=0
@@ -35,7 +36,7 @@ set_defaults() {
 # Determine battery charge state
 battery_charge() {
     case "$(uname -s)" in
-        "Darwin")
+        Darwin)
             if ((pmset_on)) && command -v pmset &>/dev/null; then
                 if [[ "$(pmset -g batt | grep -o 'AC Power')" ]]; then
                     BATT_CONNECTED=1
@@ -44,7 +45,7 @@ battery_charge() {
                 fi
                 BATT_PCT=$(pmset -g batt | grep -o '[0-9]*%' | tr -d %)
             else
-                while read key value; do
+                while read -r key value; do
                     case "$key" in
                         "MaxCapacity")
                             maxcap=$value
@@ -66,7 +67,7 @@ battery_charge() {
                 done < <(ioreg -n AppleSmartBattery -r | grep -o '"[^"]*" = [^ ]*' | sed -e 's/= //g' -e 's/"//g' | sort)
             fi
             ;;
-        "Linux")
+        Linux)
             resolve_bat_state_file_prefix() {
                 local prefixes prefix
 
@@ -86,12 +87,12 @@ battery_charge() {
             battery_full=$battery_path/${bat_state_file_prefix}_full
             battery_current=$battery_path/${bat_state_file_prefix}_now
 
-            case "$(cat /etc/*-release)" in
+            case "$(cat -- /etc/*-release)" in
                 *"Arch Linux"*|*"Ubuntu"*|*"openSUSE"*)
-                    battery_state="$(cat "$battery_current")"
+                    battery_state="$(cat -- "$battery_current")"
                     ;;
                 *)
-                    battery_state="$(cat "$battery_path/status")"
+                    battery_state="$(cat -- "$battery_path/status")"
                     ;;
             esac
 
@@ -101,8 +102,8 @@ battery_charge() {
                 BATT_CONNECTED=1
             fi
 
-            now="$(cat "$battery_current")"
-            full="$(cat "$battery_full")"
+            now="$(cat -- "$battery_current")"
+            full="$(cat -- "$battery_full")"
             BATT_PCT=$((100 * now / full))
             ;;
     esac
@@ -148,7 +149,7 @@ print_status() {
         GRAPH="⚡"
     else
         if command -v spark &>/dev/null; then
-            sparks=$(spark 0 ${BATT_PCT} 100)
+            sparks=$(spark 0 "$BATT_PCT" 100)
             GRAPH=${sparks:1:1}
         else
             ascii=1
@@ -159,7 +160,7 @@ print_status() {
         barlength=${#ascii_bar}
 
         # Battery percentage rounded to the lenght of ascii_bar
-        rounded_n=$(( $barlength * $BATT_PCT / 100 + 1))
+        rounded_n=$(( barlength * BATT_PCT / 100 + 1))
 
         # Creates the bar
         GRAPH=$(printf "[%-${barlength}s]" "${ascii_bar:0:rounded_n}")
@@ -186,7 +187,7 @@ fi
 set_defaults
 
 # Read args
-while getopts ":g:m:w:tzeab:p" opt; do
+while getopts ':g:m:w:tzeab:p' opt; do
     case "$opt" in
         g)
             good_color=$OPTARG
