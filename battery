@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+#
+# see also:
+# - https://github.com/Juve45/batstat
+# - $ cat /sys/class/power_supply/BAT0/capacity
+# - $ upower -i $(upower -e | grep BAT) | grep -E 'state|to\ full|to\ empty|percentage'
 
 usage() {
 cat <<EOF
@@ -47,14 +52,14 @@ battery_charge() {
             else
                 while read -r key value; do
                     case "$key" in
-                        "MaxCapacity")
+                        MaxCapacity)
                             maxcap=$value
                             ;;
-                        "CurrentCapacity")
+                        CurrentCapacity)
                             curcap=$value
                             ;;
-                        "ExternalConnected")
-                            if [[ "$value" == "No" ]]; then
+                        ExternalConnected)
+                            if [[ "$value" == No ]]; then
                                 BATT_CONNECTED=0
                             else
                                 BATT_CONNECTED=1
@@ -68,6 +73,7 @@ battery_charge() {
             fi
             ;;
         Linux)
+            # see also https://docs.kernel.org/power/power_supply_class.html
             resolve_bat_state_file_prefix() {
                 local prefixes prefix
 
@@ -75,7 +81,7 @@ battery_charge() {
 
                 for prefix in "${prefixes[@]}"; do
                     [[ -f "$battery_path/${prefix}_full" && -f "$battery_path/${prefix}_now" ]] && \
-                            { echo "$prefix"; return 0; }
+                            { echo -n "$prefix"; return 0; }
                 done
 
                 return 1
@@ -88,12 +94,8 @@ battery_charge() {
             battery_current=$battery_path/${bat_state_file_prefix}_now
 
             case "$(cat -- /etc/*-release)" in
-                *"Arch Linux"*|*"Ubuntu"*|*"openSUSE"*)
-                    battery_state="$(cat -- "$battery_current")"
-                    ;;
-                *)
-                    battery_state="$(cat -- "$battery_path/status")"
-                    ;;
+                *'Arch Linux'*|*'Ubuntu'*|*'openSUSE'*) battery_state="$(cat -- "$battery_current")" ;;
+                *) battery_state="$(cat -- "$battery_path/status")" ;;
             esac
 
             if [[ "$battery_state" == 'Discharging' ]]; then
@@ -146,7 +148,7 @@ apply_colors() {
 # Print the battery status
 print_status() {
     if ((emoji)) && ((BATT_CONNECTED)); then
-        GRAPH="⚡"
+        GRAPH='⚡'
     else
         if command -v spark &>/dev/null; then
             sparks=$(spark 0 "$BATT_PCT" 100)
@@ -167,11 +169,11 @@ print_status() {
     fi
 
     if ((output_tmux)); then
-        printf "%s%s %s%s" "$COLOR" "[$BATT_PCT%]" "$GRAPH" "#[default]"
+        printf '%s%s %s%s' "$COLOR" "[$BATT_PCT%]" "$GRAPH" "#[default]"
     elif ((output_zsh)); then
-        printf "%%B%s%s %s" "$COLOR" "[$BATT_PCT%%]" "$GRAPH"
+        printf '%%B%s%s %s' "$COLOR" "[$BATT_PCT%%]" "$GRAPH"
     else
-        printf "\e[0;%sm%s %s \e[m\n"  "$COLOR" "[$BATT_PCT%]"  "$GRAPH"
+        printf '\e[0;%sm%s %s \e[m\n'  "$COLOR" "[$BATT_PCT%]"  "$GRAPH"
     fi
 }
 
